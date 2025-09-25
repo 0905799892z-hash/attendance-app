@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <title>簽到測試</title>
+</head>
+<body>
+  <h1>簽到測試</h1>
+  <p>
+    學號：<input id="sid" />
+    姓名：<input id="name" />
+    <button id="btn">送出簽到</button>
+  </p>
+  <pre id="out"></pre>
+
+  <script>
+    document.getElementById('btn').onclick = async () => {
+      const studentId = document.getElementById('sid').value.trim();
+      const name = document.getElementById('name').value.trim();
+      const res = await fetch('http://localhost:3000/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, name })
+      });
+      const data = await res.json();
+      document.getElementById('out').textContent = JSON.stringify(data, null, 2);
+    };
+  </script>
+</body>
+</html>
