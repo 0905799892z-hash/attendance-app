@@ -1,46 +1,40 @@
 const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
 const cors = require("cors");
+const sqlite3 = require("sqlite3").verbose();
 
 const app = express();
-app.use(express.json());
+const PORT = process.env.PORT || 3000;
+
+// 啟用 CORS & JSON body parser
 app.use(cors());
+app.use(express.json());
 
-// 建立資料庫
-const db = new sqlite3.Database("./attendance.db");
-
-// 建立表格
-db.run(`CREATE TABLE IF NOT EXISTS attendance (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    studentId TEXT,
-    name TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    status TEXT
-)`);
-
-// 點名 API
-app.post("/checkin", (req, res) => {
-    const { studentId, name } = req.body;
-    const now = new Date();
-    const hour = now.getHours();
-    let status = hour <= 9 ? "準時" : "遲到";
-
-    db.run(
-        `INSERT INTO attendance (studentId, name, status) VALUES (?, ?, ?)`,
-        [studentId, name, status],
-        function (err) {
-            if (err) return res.status(500).send("Database error");
-            res.json({ message: "點名成功", status });
-        }
-    );
+// 連線到 SQLite
+const db = new sqlite3.Database("./attendance.db", (err) => {
+  if (err) {
+    console.error("❌ 連線 SQLite 失敗:", err.message);
+  } else {
+    console.log("✅ 已連線 SQLite 資料庫");
+  }
 });
 
-// 查詢 API
-app.get("/records", (req, res) => {
-    db.all(`SELECT * FROM attendance`, [], (err, rows) => {
-        if (err) return res.status(500).send("Database error");
-        res.json(rows);
-    });
+// 測試 API
+app.get("/", (req, res) => {
+  res.send("✅ Attendance API is running!");
 });
 
-app.listen(3000, () => console.log("✅ Server running on http://localhost:3000"));
+// 範例：查詢資料表 (要確保 DB 有 table)
+app.get("/students", (req, res) => {
+  db.all("SELECT * FROM students", [], (err, rows) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.json(rows);
+    }
+  });
+});
+
+// 啟動伺服器
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
+});

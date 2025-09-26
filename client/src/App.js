@@ -1,97 +1,84 @@
-import React, { useState, useEffect } from "react";
+const express = require("express");
+const sqlite3 = require("sqlite3").verbose();
+const cors = require("cors");
 
-function App() {
-  const [studentId, setStudentId] = useState("");
-  const [name, setName] = useState("");
-  const [message, setMessage] = useState("");
-  const [view, setView] = useState("student"); // student or teacher
-  const [records, setRecords] = useState([]);
+const app = express();
+app.use(express.json());
+app.use(cors());
 
-  // 學生簽到
-  const handleCheckin = async () => {
-    try {
-      const res = await fetch("http://localhost:3000/checkin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ studentId, name }),
-      });
+// 建立資料庫
+const db = new sqlite3.Database("./attendance.db");
 
-      const data = await res.json();
-      setMessage(data.message);
-    } catch (err) {
-      console.error(err);
-      setMessage("伺服器錯誤，請稍後再試");
+// 建立表格
+db.run(`CREATE TABLE IF NOT EXISTS attendance (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  studentId TEXT,
+  name TEXT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  status TEXT
+)`);
+
+// ======== 上課時間設定 ========
+// 第一節 08:10，第二節 09:10，以此類推
+const classTimes = [
+  "08:10",
+  "09:10",
+  "10:10",
+  "11:10",
+  "13:10",
+  "14:10",
+  "15:10",
+];
+
+// ======== 判斷是否遲到 ========
+function getStatus() {
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  for (let classTime of classTimes) {
+    const [h, m] = classTime.split(":").map(Number);
+    const classMinutes = h * 60 + m;
+
+    // 如果現在時間在課程開始 ±60 分鐘內，就比對是否遲到
+    if (currentMinutes >= classMinutes && currentMinutes <= classMinutes + 60) {
+      if (currentMinutes > classMinutes + 20) {
+        return "遲到";
+      } else {
+        return "準時";
+      }
     }
-  };
-
-  // 老師端：載入出勤紀錄
-  useEffect(() => {
-    if (view === "teacher") {
-      fetch("http://localhost:3000/records")
-        .then((res) => res.json())
-        .then((data) => setRecords(data))
-        .catch((err) => console.error(err));
-    }
-  }, [view]);
-
-  return (
-    <div style={{ padding: "20px" }}>
-      <h1>線上點名系統</h1>
-
-      {/* 切換按鈕 */}
-      <button onClick={() => setView("student")}>切換到學生端</button>
-      <button onClick={() => setView("teacher")}>切換到老師端</button>
-
-      {view === "student" ? (
-        <div>
-          <input
-            type="text"
-            placeholder="學號"
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value)}
-          />
-          <br />
-          <input
-            type="text"
-            placeholder="姓名"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <br />
-          <button onClick={handleCheckin}>簽到</button>
-          <p>{message}</p>
-        </div>
-      ) : (
-        <div>
-          <h2>出勤紀錄</h2>
-          <table border="1" cellPadding="5">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>學號</th>
-                <th>姓名</th>
-                <th>時間</th>
-                <th>狀態</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.id}</td>
-                  <td>{r.studentId}</td>
-                  <td>{r.name}</td>
-                  <td>{r.timestamp}</td>
-                  <td>{r.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
+  }
+  return "非上課時間";
 }
 
-export default App;
+// ======== 簽到 API ========
+app.post("/checkin", (req, res) => {
+  const { studentId, name } = req.body;
+  const status = getStatus();
+
+  db.run(
+    `INSERT INTO attendance (studentId, name, status) VALUES (?, ?, ?)`,
+    [studentId, name, status],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ message: "資料庫錯誤" });
+      }
+      res.json({ message: `${name} (${studentId}) 簽到成功，狀態：${status}` });
+    }
+  );
+});
+
+// ======== 查詢紀錄 API ========
+app.get("/records", (req, res) => {
+  db.all(`SELECT * FROM attendance`, [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: "資料庫錯誤" });
+    }
+    res.json(rows);
+  });
+});
+
+// 啟動伺服器
+app.listen(3000, () => {
+  console.log("✅ Server running on http://localhost:3000");
+});
