@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>線上點名系統</title>
+</head>
+<body>
+  <h1>線上點名系統</h1>
+
+  <label>
+    姓名：
+    <input type="text" id="name" />
+  </label>
+  <br><br>
+  <button onclick="checkin()">簽到</button>
+
+  <p id="message"></p>
+
+  <script>
+    async function checkin() {
+      const name = document.getElementById("name").value;
+
+      if (!name) {
+        document.getElementById("message").innerText = "⚠️ 請輸入姓名";
+        return;
+      }
+
+      try {
+        const res = await fetch("https://attendance-app-cv7s.onrender.com/students", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name, status: "present" }),
+        });
+
+        const data = await res.json();
+        document.getElementById("message").innerText =
+          "✅ 已簽到：" + data.name;
+      } catch (err) {
+        document.getElementById("message").innerText = "❌ 伺服器錯誤，請稍後再試";
+      }
+    }
+  </script>
+</body>
+</html>
