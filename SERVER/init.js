@@ -1,8 +1,8 @@
 const sqlite3 = require("sqlite3").verbose();
 const db = new sqlite3.Database("./attendance.db");
 
+// 建立 students table
 db.serialize(() => {
-  // 建立 students table
   db.run(`
     CREATE TABLE IF NOT EXISTS students (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -11,8 +11,10 @@ db.serialize(() => {
     )
   `);
   console.log("✅ students table 建立成功！");
+});
 
-  // 建立 attendance table
+// 建立 attendance table
+db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS attendance (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <title>線上點名系統</title>
@@ -7,38 +7,52 @@
 <body>
   <h1>線上點名系統</h1>
 
-  <label>
-    姓名：
-    <input type="text" id="name" />
-  </label>
-  <br><br>
-  <button onclick="checkin()">簽到</button>
+  <!-- 學生簽到 -->
+  <h2>學生簽到</h2>
+  <input type="text" id="studentId" placeholder="學號">
+  <input type="text" id="name" placeholder="姓名">
+  <button onclick="checkIn()">簽到</button>
+  <pre id="result"></pre>
 
-  <p id="message"></p>
+  <hr>
+
+  <!-- 查詢紀錄 -->
+  <h2>查詢簽到紀錄</h2>
+  <input type="text" id="queryId" placeholder="輸入學號">
+  <button onclick="checkAttendance()">查詢</button>
+  <pre id="attendanceResult"></pre>
 
   <script>
-    async function checkin() {
+    const API_BASE = "https://attendance-app-cv7s.onrender.com";
+
+    // 學生簽到
+    async function checkIn() {
+      const studentId = document.getElementById("studentId").value;
       const name = document.getElementById("name").value;
 
-      if (!name) {
-        document.getElementById("message").innerText = "⚠️ 請輸入姓名";
-        return;
+      try {
+        const res = await fetch(`${API_BASE}/attendance`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId, name }),
+        });
+        const data = await res.json();
+        document.getElementById("result").textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        document.getElementById("result").textContent = "❌ 發生錯誤：" + err;
       }
+    }
+
+    // 查詢簽到紀錄
+    async function checkAttendance() {
+      const queryId = document.getElementById("queryId").value;
 
       try {
-        const res = await fetch("https://attendance-app-cv7s.onrender.com/students", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ name, status: "present" }),
-        });
-
+        const res = await fetch(`${API_BASE}/attendance/${queryId}`);
         const data = await res.json();
-        document.getElementById("message").innerText =
-          "✅ 已簽到：" + data.name;
+        document.getElementById("attendanceResult").textContent = JSON.stringify(data, null, 2);
       } catch (err) {
-        document.getElementById("message").innerText = "❌ 伺服器錯誤，請稍後再試";
+        document.getElementById("attendanceResult").textContent = "❌ 發生錯誤：" + err;
       }
     }
   </script>
